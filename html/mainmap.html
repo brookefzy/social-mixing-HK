@@ -151,7 +151,7 @@ closeOnClick: true
                     '<h3>'+ bar5group(e.features[0].properties['1per'], e.features[0].properties['2per'], 
                 e.features[0].properties['3per'],e.features[0].properties['4per'], e.features[0].properties['5per'],)+
                 '<h5>TOTAL VISITS: <strong>'+
-            roundHour(e.features[0].properties.visit_total)+'</strong></h5>'
+            roundVisit(e.features[0].properties.visit_total)+'</strong></h5>'
         )
           .addTo(map);
           });

@@ -67,6 +67,10 @@ function roundHour(num){
     num = num/3600
     return num.toFixed(0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
+function roundVisit(num){
+    return num.toFixed(0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
 
 
 function colorbar(num){
