@@ -32,7 +32,13 @@
             height: 100vh;
             z-index: 0;
           }
-        
+        #canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
         canvas {
             display: block;
             cursor: pointer;
@@ -203,43 +209,62 @@
         // Hong Kong locations (normalized coordinates covering the territory)
         const locations = {
             // Residential areas
-            tsuenWanHome: [0.25, 0.4],     // Low income - Tsuen Wan
-            kwunTongHome: [0.75, 0.6],     // Mid-low income - Kwun Tong
-            midLevelsHome: [0.45, 0.75],   // Mid-high income - Mid-Levels
-            peakHome: [0.4, 0.8],          // High income - The Peak
+            tsuenWanHome: [114.1095, 22.3707],     // Tsuen Wan
+            kwunTongHome: [114.2266, 22.3092],     // Kwun Tong
+            midLevelsHome: [114.1434, 22.2783],    // Mid-Levels
+            peakHome: [114.1312, 22.2707],         // The Peak
             
-            // Low income locations (limited but some diversity)
-            wetMarket: [0.27, 0.42],
-            publicLibrary: [0.3, 0.45],
-            communityCenter: [0.28, 0.38],
-            mtrStation: [0.32, 0.43],
-            dimSumRestaurant: [0.26, 0.41],
+            // Group A locations (Tsuen Wan area - limited mobility)
+            wetMarket: [114.1145, 22.3685],        // Tsuen Wan wet market
+            publicLibrary: [114.1087, 22.3721],    // Tsuen Wan library
+            communityCenter: [114.1102, 22.3698],  // Community center
+            mtrStation: [114.1083, 22.3707],       // Tsuen Wan MTR
+            dimSumRestaurant: [114.1125, 22.3692], // Local dim sum
             
-            // Mid-low income locations (most diverse - crosses many districts)
-            office: [0.5, 0.7],            // Central
-            chaChaan: [0.72, 0.58],        // Cha chaan teng
-            shoppingMall: [0.48, 0.68],    // Times Square
-            bank: [0.52, 0.72],
-            yumCha: [0.74, 0.62],          // Dim sum restaurant
-            kTownBar: [0.76, 0.61],        // Kwun Tong bar
-            sportsFacility: [0.73, 0.59],
-            nightMarket: [0.77, 0.63],
-            cafe: [0.49, 0.69],
-            temple: [0.47, 0.67],
+            // Group B locations (most diverse - across HK)
+            office: [114.1577, 22.2793],           // Central business district
+            chaChaan: [114.2245, 22.3108],         // Kwun Tong cha chaan teng
+            shoppingMall: [114.1844, 22.2783],     // Causeway Bay Times Square
+            bank: [114.1588, 22.2817],             // Central bank
+            yumCha: [114.2298, 22.3125],           // Kwun Tong yum cha
+            kTownBar: [114.2287, 22.3098],         // Kwun Tong bar
+            sportsFacility: [114.2201, 22.3076],   // Sports complex
+            nightMarket: [114.1711, 22.2769],      // Wan Chai night market
+            cafe: [114.1523, 22.2808],             // Central cafe
+            temple: [114.1634, 22.2756],           // Wan Chai temple
             
-            // Mid-high income locations (fewer, more upscale)
-            ifc: [0.48, 0.72],             // IFC Mall
-            soho: [0.46, 0.76],            // SoHo district
-            privateClub: [0.44, 0.74],
-            fitnessClub: [0.43, 0.77],
+            // Group C locations (Mid-Levels area - upscale)
+            ifc: [114.1577, 22.2855],              // IFC Mall Central
+            soho: [114.1489, 22.2798],             // SoHo district
+            privateClub: [114.1445, 22.2791],      // Mid-Levels club
+            fitnessClub: [114.1423, 22.2776],      // Fitness club
             
-            // High income locations (exclusive areas)
-            exclusiveClub: [0.41, 0.81],   // Peak area
-            michelin: [0.42, 0.79],        // Michelin restaurant
-            privateBank: [0.5, 0.73],      // Central
-            yacht: [0.39, 0.78],           // Aberdeen
-            artGallery: [0.45, 0.74]       // Central
+            // Group D locations (Peak/exclusive areas)
+            exclusiveClub: [114.1298, 22.2698],    // Peak club
+            michelin: [114.1334, 22.2712],         // Peak restaurant
+            privateBank: [114.1598, 22.2823],      // Private banking Central
+            yacht: [114.1532, 22.2467],            // Aberdeen yacht club
+            artGallery: [114.1567, 22.2801]        // Central art gallery
         };
+        
+        // Helper function to convert lat/lng to canvas coordinates
+        function lngLatToCanvas(lngLat) {
+            if (map && mapboxLoaded) {
+                // Use Mapbox projection if available
+                const point = map.project(lngLat);
+                return [point.x, point.y];
+            } else {
+                // Fallback: manual projection for Hong Kong bounds
+                // Hong Kong bounds: lng 113.8-114.5, lat 22.1-22.6
+                const lng = lngLat[0];
+                const lat = lngLat[1];
+                
+                const x = ((lng - 113.8) / (114.5 - 113.8)) * canvas.width;
+                const y = ((22.6 - lat) / (22.6 - 22.1)) * canvas.height;
+                
+                return [x, y];
+            }
+        }
         
         // Initialize Mapbox (with better error handling)
         function initializeMapbox() {
@@ -260,37 +285,26 @@
                     // Set the access token
                     mapboxgl.accessToken = accessToken;
                     
-                    // Create a visible div for testing
-                    const mapDiv = document.createElement('div');
-                    mapDiv.id = 'mapbox-container';
-                    mapDiv.style.width = '400px';
-                    mapDiv.style.height = '300px';
-                    mapDiv.style.position = 'absolute';
-                    mapDiv.style.top = '10px';
-                    mapDiv.style.left = '10px';
-                    mapDiv.style.zIndex = '1000';
-                    mapDiv.style.border = '2px solid red';
-                    document.body.appendChild(mapDiv);
                     
                     // Initialize Mapbox map with minimal options
                     map = new mapboxgl.Map({
-                        container: mapDiv,
-                        style: 'mapbox://styles/mapbox/streets-v11', // Try different style
+                        container: 'map',
+                        style: 'mapbox://styles/brookefzy/ckhdkumtm08lk19pu5amwga80',
                         center: [114.1694, 22.3193],
-                        zoom: 10
-                    });
-                    
-                    map.on('load', function() {
+                        zoom: 11
+                      });
+                      map.on('load', () => {
                         console.log('Mapbox loaded successfully!');
                         mapboxLoaded = true;
                         draw();
-                    });
+                      });
                     
-                    map.on('error', function(e) {
+                      map.on('error', (e) => {
                         console.error('Mapbox error:', e);
-                        mapDiv.remove(); // Remove the test div
+                        // fallback to gradient by hiding #map
+                        document.getElementById('map').style.display = 'none';
                         draw();
-                    });
+                      });
                     
                 } else {
                     console.log('Mapbox GL JS not loaded');
@@ -343,10 +357,12 @@
                 const startPos = currentSegment === 0 ? this.home : this.dailyPath[currentSegment - 1];
                 const endPos = this.dailyPath[Math.min(currentSegment, this.dailyPath.length - 1)];
                 
-                // Interpolate position
-                this.currentPosition[0] = startPos[0] + (endPos[0] - startPos[0]) * segmentProgress;
-                this.currentPosition[1] = startPos[1] + (endPos[1] - startPos[1]) * segmentProgress;
+                // Interpolate between lat/lng coordinates
+                const currentLng = startPos[0] + (endPos[0] - startPos[0]) * segmentProgress;
+                const currentLat = startPos[1] + (endPos[1] - startPos[1]) * segmentProgress;
                 
+                // Convert to canvas coordinates
+                this.currentPosition = lngLatToCanvas([currentLng, currentLat]);
                 // Record visit history for path visualization
                 this.visitHistory.push([...this.currentPosition]);
                 if (this.visitHistory.length > 300) {
@@ -364,8 +380,8 @@
                 this.interactions = [];
                 for (let other of others) {
                     if (other !== this) {
-                        const dx = (this.currentPosition[0] - other.currentPosition[0]) * canvas.width;
-                        const dy = (this.currentPosition[1] - other.currentPosition[1]) * canvas.height;
+                        const dx = (this.currentPosition[0] - other.currentPosition[0]);
+                        const dy = (this.currentPosition[1] - other.currentPosition[1]);
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
                         if (distance < 70) { // Interaction threshold
@@ -428,8 +444,8 @@
                     return;
                 }
                 
-                const x = this.currentPosition[0] * canvas.width;
-                const y = this.currentPosition[1] * canvas.height;
+                const x = this.currentPosition[0];
+                const y = this.currentPosition[1];
                 
                 // Draw person with glow effect
                 const segregation = this.calculateSegregation();
@@ -449,8 +465,8 @@
                 for (let other of this.interactions) {
                     // Only draw interaction lines if both people are visible
                     if (visibleGroups.has(other.incomeGroup)) {
-                        const otherX = other.currentPosition[0] * canvas.width;
-                        const otherY = other.currentPosition[1] * canvas.height;
+                        const otherX = other.currentPosition[0];
+                        const otherY = other.currentPosition[1];
                         
                         ctx.beginPath();
                         ctx.moveTo(x, y);
@@ -473,8 +489,8 @@
                 ctx.beginPath();
                 
                 for (let i = 0; i < this.visitHistory.length; i++) {
-                    const x = this.visitHistory[i][0] * canvas.width;
-                    const y = this.visitHistory[i][1] * canvas.height;
+                    const x = this.visitHistory[i][0];
+                    const y = this.visitHistory[i][1];
                     
                     if (i === 0) {
                         ctx.moveTo(x, y);
@@ -555,7 +571,7 @@
         function resetAnimation() {
             animationRunning = false;
             for (let person of people) {
-                person.currentPosition = [...person.home];
+                person.currentPosition = lngLatToCanvas(person.home);
                 person.pathHistory = [];
                 person.visitHistory = [];
                 person.interactions = [];
@@ -661,10 +677,9 @@
             ];
             
             // Draw all location dots first
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            for (let [name, pos] of Object.entries(locations)) {
-                const x = pos[0] * canvas.width;
-                const y = pos[1] * canvas.height;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            for (let [name, lngLat] of Object.entries(locations)) {
+                const [x, y] = lngLatToCanvas(lngLat);
                 
                 ctx.beginPath();
                 ctx.arc(x, y, 4, 0, Math.PI * 2);
@@ -678,13 +693,11 @@
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.lineWidth = 3;
             
-            for (let [name, pos] of labeledLocations) {
-                const x = pos[0] * canvas.width;
-                const y = pos[1] * canvas.height - 15; // Position above the dot
-                
+            for (let [name, lngLat] of labeledLocations) {
+                const [x, y] = lngLatToCanvas(lngLat);
                 // Stroke (outline) first, then fill
-                ctx.strokeText(name, x, y);
-                ctx.fillText(name, x, y);
+                ctx.strokeText(name, x, y - 15);
+                ctx.fillText(name, x, y - 15);
             }
             
             ctx.textAlign = 'start'; // Reset
@@ -692,18 +705,7 @@
         
         function draw() {
             // Draw Mapbox background if available
-            if (mapImage) {
-                ctx.globalAlpha = 0.3; // Make map semi-transparent
-                ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0;
-            } else {
-                // Fallback gradient background
-                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                gradient.addColorStop(0, 'rgba(20, 40, 60, 0.9)');
-                gradient.addColorStop(1, 'rgba(40, 20, 60, 0.9)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Draw location markers and labels
             drawLocations(ctx);
@@ -747,6 +749,7 @@
             resizeCanvas();
             initializePeople();
             initializeMapbox();
+            updateGroupLabels();
             draw();
             updateStats();
         });
