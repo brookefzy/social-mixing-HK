@@ -147,6 +147,7 @@
             <button onclick="resetAnimation()">Reset</button>
             <button onclick="clearPaths()">Clear Paths</button>
             <button onclick="toggleBars()">Toggle Bars</button>
+            <button onclick="goBack()">Back to Map</button>
         </div>
         
         <div class="legend">
@@ -670,7 +671,11 @@
         function toggleBars() {
             showBars = !showBars;
         }
-        
+
+        function goBack() {
+            window.location.href = 'maps.html';
+        }
+
         function clearPaths() {
             // Clear all path histories
             for (let person of people) {
