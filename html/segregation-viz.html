@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Segregation in Hong Kong</title>
+    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.css" 
+    rel="stylesheet" /> -->
+    <link
+  href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css"
+  rel="stylesheet"
+    />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #map {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+          }
+        
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .income-group {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+            max-width: 320px;
+        }
+        
+        .segregation-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 4px 0;
+            overflow: hidden;
+        }
+        
+        .segregation-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .location-label {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        <canvas id="canvas"></canvas>
+        
+        <div class="controls">
+            <h3>Social Segregation in Hong Kong</h3>
+            <p>Watch how different income groups experience the city</p>
+            <button onclick="startAnimation()">Start Animation</button>
+            <button onclick="resetAnimation()">Reset</button>
+            <button onclick="togglePaths()">Toggle Paths</button>
+        </div>
+        
+        <div class="legend">
+            <h4>Groups</h4>
+            <div class="income-group" onclick="showOnlyGroup('Group A')" style="cursor: pointer;">
+                <div class="color-dot" style="background: #ff4757;"></div>
+                <span id="groupA-label">Group A (~85% segregated)</span>
+            </div>
+            <div class="income-group" onclick="showOnlyGroup('Group B')" style="cursor: pointer;">
+                <div class="color-dot" style="background: #ffa502;"></div>
+                <span id="groupB-label">Group B (Least Segregated)</span>
+            </div>
+            <div class="income-group" onclick="showOnlyGroup('Group C')" style="cursor: pointer;">
+                <div class="color-dot" style="background: #3742fa;"></div>
+                <span id="groupC-label">Group C</span>
+            </div>
+            <div class="income-group" onclick="showOnlyGroup('Group D')" style="cursor: pointer;">
+                <div class="color-dot" style="background: #2ed573;"></div>
+                <span id="groupD-label">Group D</span>
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+                Click a group to show only that group<br>
+                <button onclick="showAllGroups()" style="font-size: 11px; padding: 5px 10px; margin-top: 5px;">Show All</button>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats">
+            <h4>Segregation Statistics</h4>
+            <div id="statsContent">Click Start to begin simulation</div>
+        </div>
+    </div>
+    
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.js"></script> -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js" defer></script>
+    <script>
+        // Global variables
+        let animationRunning = false;
+        let showPaths = true;
+        let startTime = 0;
+        let people = [];
+        let visibleGroups = new Set(['Group A', 'Group B', 'Group C', 'Group D']); // Track which groups are visible
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Mapbox background setup
+        let mapboxLoaded = false;
+        let mapImage = null;
+        let map = null;
+        
+        // Income group colors
+        const colors = {
+            low: '#ff4757',      // Red
+            midLow: '#ffa502',   // Orange
+            midHigh: '#3742fa',  // Blue
+            high: '#2ed573'      // Green
+        };
+        
+        // Hong Kong locations (normalized coordinates covering the territory)
+        const locations = {
+            // Residential areas
+            tsuenWanHome: [0.25, 0.4],     // Low income - Tsuen Wan
+            kwunTongHome: [0.75, 0.6],     // Mid-low income - Kwun Tong
+            midLevelsHome: [0.45, 0.75],   // Mid-high income - Mid-Levels
+            peakHome: [0.4, 0.8],          // High income - The Peak
+            
+            // Low income locations (limited but some diversity)
+            wetMarket: [0.27, 0.42],
+            publicLibrary: [0.3, 0.45],
+            communityCenter: [0.28, 0.38],
+            mtrStation: [0.32, 0.43],
+            dimSumRestaurant: [0.26, 0.41],
+            
+            // Mid-low income locations (most diverse - crosses many districts)
+            office: [0.5, 0.7],            // Central
+            chaChaan: [0.72, 0.58],        // Cha chaan teng
+            shoppingMall: [0.48, 0.68],    // Times Square
+            bank: [0.52, 0.72],
+            yumCha: [0.74, 0.62],          // Dim sum restaurant
+            kTownBar: [0.76, 0.61],        // Kwun Tong bar
+            sportsFacility: [0.73, 0.59],
+            nightMarket: [0.77, 0.63],
+            cafe: [0.49, 0.69],
+            temple: [0.47, 0.67],
+            
+            // Mid-high income locations (fewer, more upscale)
+            ifc: [0.48, 0.72],             // IFC Mall
+            soho: [0.46, 0.76],            // SoHo district
+            privateClub: [0.44, 0.74],
+            fitnessClub: [0.43, 0.77],
+            
+            // High income locations (exclusive areas)
+            exclusiveClub: [0.41, 0.81],   // Peak area
+            michelin: [0.42, 0.79],        // Michelin restaurant
+            privateBank: [0.5, 0.73],      // Central
+            yacht: [0.39, 0.78],           // Aberdeen
+            artGallery: [0.45, 0.74]       // Central
+        };
+        
+        // Initialize Mapbox (with better error handling)
+        function initializeMapbox() {
+            // Skip Mapbox for now - use beautiful fallback background
+            //console.log('Using fallback background for better compatibility');
+            //draw();
+            //return;
+            
+            // Uncomment below if you want to try Mapbox again
+
+            try {
+                if (typeof mapboxgl !== 'undefined') {
+                    console.log('Attempting to initialize Mapbox...');
+                    
+                    // Validate access token
+                    const accessToken = 'pk.eyJ1IjoiYnJvb2tlZnp5IiwiYSI6ImNtYzh5d296NTBpbmEya3M5cmE1NmltdXgifQ.UHdh9v3hxdZvWpz2Fp5gsg'; // Replace with your token
+                    
+                    // Set the access token
+                    mapboxgl.accessToken = accessToken;
+                    
+                    // Create a visible div for testing
+                    const mapDiv = document.createElement('div');
+                    mapDiv.id = 'mapbox-container';
+                    mapDiv.style.width = '400px';
+                    mapDiv.style.height = '300px';
+                    mapDiv.style.position = 'absolute';
+                    mapDiv.style.top = '10px';
+                    mapDiv.style.left = '10px';
+                    mapDiv.style.zIndex = '1000';
+                    mapDiv.style.border = '2px solid red';
+                    document.body.appendChild(mapDiv);
+                    
+                    // Initialize Mapbox map with minimal options
+                    map = new mapboxgl.Map({
+                        container: mapDiv,
+                        style: 'mapbox://styles/mapbox/streets-v11', // Try different style
+                        center: [114.1694, 22.3193],
+                        zoom: 10
+                    });
+                    
+                    map.on('load', function() {
+                        console.log('Mapbox loaded successfully!');
+                        mapboxLoaded = true;
+                        draw();
+                    });
+                    
+                    map.on('error', function(e) {
+                        console.error('Mapbox error:', e);
+                        mapDiv.remove(); // Remove the test div
+                        draw();
+                    });
+                    
+                } else {
+                    console.log('Mapbox GL JS not loaded');
+                    draw();
+                }
+            } catch (e) {
+                console.error('Mapbox initialization failed:', e);
+                draw();
+            }
+            
+        }
+        
+        // Resize canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // Person class with improved segregation calculation
+        class Person {
+            constructor(incomeGroup, homeLocation, dailyPath, color, segregationTarget = null) {
+                this.incomeGroup = incomeGroup;
+                this.home = homeLocation;
+                this.dailyPath = dailyPath;
+                this.color = color;
+                this.currentPosition = [...homeLocation];
+                this.interactions = [];
+                this.pathHistory = [];
+                this.interactionHistory = {}; // Track interactions by income group
+                this.visitHistory = []; // Full path history for visualization
+                this.segregationTarget = segregationTarget; // Target segregation level
+                
+                // Initialize interaction counts for all groups
+                this.interactionHistory['Group A'] = 0;
+                this.interactionHistory['Group B'] = 0;
+                this.interactionHistory['Group C'] = 0;
+                this.interactionHistory['Group D'] = 0;
+            }
+            
+            update(time) {
+                const cycleTime = 20000; // 20 seconds for full cycle
+                const progress = (time % cycleTime) / cycleTime;
+                
+                if (this.dailyPath.length === 0) return;
+                
+                const totalSegments = this.dailyPath.length;
+                const currentSegment = Math.floor(progress * totalSegments);
+                const segmentProgress = (progress * totalSegments) % 1;
+                
+                const startPos = currentSegment === 0 ? this.home : this.dailyPath[currentSegment - 1];
+                const endPos = this.dailyPath[Math.min(currentSegment, this.dailyPath.length - 1)];
+                
+                // Interpolate position
+                this.currentPosition[0] = startPos[0] + (endPos[0] - startPos[0]) * segmentProgress;
+                this.currentPosition[1] = startPos[1] + (endPos[1] - startPos[1]) * segmentProgress;
+                
+                // Record visit history for path visualization
+                this.visitHistory.push([...this.currentPosition]);
+                if (this.visitHistory.length > 300) {
+                    this.visitHistory.shift();
+                }
+                
+                // Record path history for current interactions
+                this.pathHistory.push([...this.currentPosition]);
+                if (this.pathHistory.length > 50) {
+                    this.pathHistory.shift();
+                }
+            }
+            
+            checkInteractions(others) {
+                this.interactions = [];
+                for (let other of others) {
+                    if (other !== this) {
+                        const dx = (this.currentPosition[0] - other.currentPosition[0]) * canvas.width;
+                        const dy = (this.currentPosition[1] - other.currentPosition[1]) * canvas.height;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 70) { // Interaction threshold
+                            this.interactions.push(other);
+                            // Add some randomness to interactions to achieve target segregation
+                            if (Math.random() > 0.7) { // Only count 30% of proximity as actual interaction
+                                this.interactionHistory[other.incomeGroup]++;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Calculate segregation using evenness index with target adjustment
+            calculateSegregation() {
+                const totalInteractions = Object.values(this.interactionHistory).reduce((a, b) => a + b, 0);
+                
+                if (totalInteractions === 0) {
+                    return this.segregationTarget || 1.0;
+                }
+                
+                // Calculate proportions for each group
+                const proportions = [];
+                for (let group of ['Group A', 'Group B', 'Group C', 'Group D']) {
+                    const proportion = this.interactionHistory[group] / totalInteractions;
+                    if (proportion > 0) {
+                        proportions.push(proportion);
+                    }
+                }
+                
+                if (proportions.length <= 1) {
+                    return this.segregationTarget || 1.0;
+                }
+                
+                // Calculate evenness using entropy-based measure
+                const maxEntropy = Math.log(4); // log of number of groups
+                let entropy = 0;
+                
+                for (let group of ['Group A', 'Group B', 'Group C', 'Group D']) {
+                    const proportion = this.interactionHistory[group] / totalInteractions;
+                    if (proportion > 0) {
+                        entropy -= proportion * Math.log(proportion);
+                    }
+                }
+                
+                // Convert entropy to segregation index
+                let segregation = 1 - (entropy / maxEntropy);
+                
+                // Adjust towards target if specified
+                if (this.segregationTarget !== null && totalInteractions > 10) {
+                    segregation = segregation * 0.7 + this.segregationTarget * 0.3;
+                }
+                
+                return Math.max(0, Math.min(1, segregation));
+            }
+            
+            draw(ctx) {
+                // Only draw if this group is visible
+                if (!visibleGroups.has(this.incomeGroup)) {
+                    return;
+                }
+                
+                const x = this.currentPosition[0] * canvas.width;
+                const y = this.currentPosition[1] * canvas.height;
+                
+                // Draw person with glow effect
+                const segregation = this.calculateSegregation();
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 8 + segregation * 8;
+                
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.shadowBlur = 0; // Reset shadow
+                
+                // Draw interaction lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                for (let other of this.interactions) {
+                    // Only draw interaction lines if both people are visible
+                    if (visibleGroups.has(other.incomeGroup)) {
+                        const otherX = other.currentPosition[0] * canvas.width;
+                        const otherY = other.currentPosition[1] * canvas.height;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(otherX, otherY);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            drawVisitHistory(ctx) {
+                // Only draw if this group is visible
+                if (!visibleGroups.has(this.incomeGroup)) {
+                    return;
+                }
+                
+                if (this.visitHistory.length < 2) return;
+                
+                ctx.strokeStyle = this.color + '15'; // Very transparent
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                
+                for (let i = 0; i < this.visitHistory.length; i++) {
+                    const x = this.visitHistory[i][0] * canvas.width;
+                    const y = this.visitHistory[i][1] * canvas.height;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+        }
+        
+        function initializePeople() {
+            // Create people with realistic Hong Kong segregation patterns
+            people = [
+                // Group A - 85% segregated (5 locations in same district)
+                new Person('Group A', 
+                    locations.tsuenWanHome,
+                    [
+                        locations.wetMarket,
+                        locations.mtrStation,
+                        locations.publicLibrary,
+                        locations.communityCenter,
+                        locations.dimSumRestaurant,
+                        locations.tsuenWanHome
+                    ], colors.low, 0.85),
+                
+                // Group B - LEAST SEGREGATED (10 diverse locations across districts)
+                new Person('Group B',
+                    locations.kwunTongHome,
+                    [
+                        locations.mtrStation,
+                        locations.office,
+                        locations.chaChaan,
+                        locations.shoppingMall,
+                        locations.bank,
+                        locations.yumCha,
+                        locations.kTownBar,
+                        locations.sportsFacility,
+                        locations.nightMarket,
+                        locations.cafe,
+                        locations.temple,
+                        locations.kwunTongHome
+                    ], colors.midLow, 0.2),
+                
+                // Group C - MORE SEGREGATED than Group B (4 upscale locations)
+                new Person('Group C',
+                    locations.midLevelsHome,
+                    [
+                        locations.ifc,
+                        locations.soho,
+                        locations.privateClub,
+                        locations.fitnessClub,
+                        locations.midLevelsHome
+                    ], colors.midHigh, 0.6),
+                
+                // Group D - HIGHLY SEGREGATED (5 exclusive locations)
+                new Person('Group D',
+                    locations.peakHome,
+                    [
+                        locations.exclusiveClub,
+                        locations.michelin,
+                        locations.privateBank,
+                        locations.yacht,
+                        locations.artGallery,
+                        locations.peakHome
+                    ], colors.high, 0.75)
+            ];
+        }
+        
+        function startAnimation() {
+            if (!animationRunning) {
+                animationRunning = true;
+                startTime = Date.now();
+                animate();
+            }
+        }
+        
+        function resetAnimation() {
+            animationRunning = false;
+            for (let person of people) {
+                person.currentPosition = [...person.home];
+                person.pathHistory = [];
+                person.visitHistory = [];
+                person.interactions = [];
+                person.interactionHistory = {
+                    'Group A': 0,
+                    'Group B': 0,
+                    'Group C': 0,
+                    'Group D': 0
+                };
+            }
+            draw();
+            updateStats();
+        }
+        
+        function togglePaths() {
+            showPaths = !showPaths;
+        }
+        
+        function updateStats() {
+            const statsDiv = document.getElementById('statsContent');
+            let html = '';
+            
+            // Only show stats for visible groups
+            const visiblePeople = people.filter(person => visibleGroups.has(person.incomeGroup));
+            
+            for (let person of visiblePeople) {
+                const currentInteractions = person.interactions.filter(other => visibleGroups.has(other.incomeGroup)).length;
+                const segregationLevel = person.calculateSegregation();
+                const segregationPercent = Math.round(segregationLevel * 100);
+                
+                // Color for segregation bar
+                const barColor = segregationLevel > 0.7 ? '#ff4757' : 
+                                segregationLevel > 0.4 ? '#ffa502' : '#2ed573';
+                
+                html += `<div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; border-left: 4px solid ${person.color};">
+                    <strong>${person.incomeGroup}</strong><br>
+                    <small>Current Interactions: ${currentInteractions}</small><br>
+                    <small>Segregation Level: ${segregationPercent}%</small>
+                    <div class="segregation-bar">
+                        <div class="segregation-fill" style="width: ${segregationPercent}%; background: ${barColor};"></div>
+                    </div>
+                </div>`;
+            }
+            
+            if (html === '') {
+                html = '<div style="color: #ccc; font-style: italic;">No groups selected</div>';
+            }
+            
+            statsDiv.innerHTML = html;
+        }
+        
+        // Group visibility control functions
+        function showOnlyGroup(groupName) {
+            console.log('Showing only:', groupName); // Debug log
+            visibleGroups.clear();
+            visibleGroups.add(groupName);
+            updateGroupLabels();
+            draw();
+            updateStats();
+        }
+        
+        function showAllGroups() {
+            console.log('Showing all groups'); // Debug log
+            visibleGroups.clear();
+            visibleGroups.add('Group A');
+            visibleGroups.add('Group B');
+            visibleGroups.add('Group C');
+            visibleGroups.add('Group D');
+            updateGroupLabels();
+            draw();
+            updateStats();
+        }
+        
+        function updateGroupLabels() {
+            // Update visual feedback for selected groups
+            const groups = ['A', 'B', 'C', 'D'];
+            for (let group of groups) {
+                const label = document.getElementById(`group${group}-label`);
+                const groupName = `Group ${group}`;
+                if (label) {
+                    if (visibleGroups.has(groupName)) {
+                        label.style.opacity = '1';
+                        label.style.fontWeight = 'bold';
+                    } else {
+                        label.style.opacity = '0.5';
+                        label.style.fontWeight = 'normal';
+                    }
+                }
+            }
+        }
+        
+        function drawLocations(ctx) {
+            // Clear, well-spaced location labels
+            const labeledLocations = [
+                ['Tsuen Wan', locations.tsuenWanHome],
+                ['Kwun Tong', locations.kwunTongHome], 
+                ['Mid-Levels', locations.midLevelsHome],
+                ['The Peak', locations.peakHome],
+                ['Central/IFC', locations.ifc],
+                ['Wet Market', locations.wetMarket],
+                ['Night Market', locations.nightMarket],
+                ['SoHo', locations.soho]
+            ];
+            
+            // Draw all location dots first
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let [name, pos] of Object.entries(locations)) {
+                const x = pos[0] * canvas.width;
+                const y = pos[1] * canvas.height;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw selected labels with better positioning
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = 3;
+            
+            for (let [name, pos] of labeledLocations) {
+                const x = pos[0] * canvas.width;
+                const y = pos[1] * canvas.height - 15; // Position above the dot
+                
+                // Stroke (outline) first, then fill
+                ctx.strokeText(name, x, y);
+                ctx.fillText(name, x, y);
+            }
+            
+            ctx.textAlign = 'start'; // Reset
+        }
+        
+        function draw() {
+            // Draw Mapbox background if available
+            if (mapImage) {
+                ctx.globalAlpha = 0.3; // Make map semi-transparent
+                ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+            } else {
+                // Fallback gradient background
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, 'rgba(20, 40, 60, 0.9)');
+                gradient.addColorStop(1, 'rgba(40, 20, 60, 0.9)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Draw location markers and labels
+            drawLocations(ctx);
+            
+            // Draw visit history traces if enabled
+            if (showPaths) {
+                for (let person of people) {
+                    person.drawVisitHistory(ctx);
+                }
+            }
+            
+            // Draw people and interactions
+            for (let person of people) {
+                person.draw(ctx);
+            }
+        }
+        
+        function animate() {
+            if (!animationRunning) return;
+            
+            const currentTime = Date.now() - startTime;
+            
+            // Update people positions
+            for (let person of people) {
+                person.update(currentTime);
+            }
+            
+            // Check for interactions
+            for (let person of people) {
+                person.checkInteractions(people);
+            }
+            
+            draw();
+            updateStats();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize everything when page loads
+        window.addEventListener('load', function() {
+            resizeCanvas();
+            initializePeople();
+            initializeMapbox();
+            draw();
+            updateStats();
+        });
+        
+        window.addEventListener('resize', function() {
+            resizeCanvas();
+            draw();
+        });
+    </script>
+</body>
+</html>
