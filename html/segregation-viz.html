@@ -370,9 +370,9 @@
                 // Convert to canvas coordinates
                 this.currentPosition = lngLatToCanvas([currentLng, currentLat]);
                 
-                // Record visit history for path visualization
+                // Record visit history for path visualization (longer history)
                 this.visitHistory.push([...this.currentPosition]);
-                if (this.visitHistory.length > 300) {
+                if (this.visitHistory.length > 800) { // Much longer history
                     this.visitHistory.shift();
                 }
                 
@@ -467,8 +467,8 @@
                 ctx.shadowBlur = 0; // Reset shadow
                 
                 // Draw interaction lines
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(246, 38, 129, 0.5)';
+                ctx.lineWidth = 3;
                 for (let other of this.interactions) {
                     // Only draw interaction lines if both people are visible
                     if (visibleGroups.has(other.incomeGroup)) {
@@ -491,21 +491,37 @@
                 
                 if (this.visitHistory.length < 2) return;
                 
-                ctx.strokeStyle = this.color + '15'; // Very transparent
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                
-                for (let i = 0; i < this.visitHistory.length; i++) {
-                    const x = this.visitHistory[i][0];
-                    const y = this.visitHistory[i][1];
+                // Draw path with gradient opacity (newer points more opaque)
+                for (let i = 1; i < this.visitHistory.length; i++) {
+                    const prevPoint = this.visitHistory[i - 1];
+                    const currPoint = this.visitHistory[i];
                     
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
+                    // Calculate opacity based on age (newer = more opaque)
+                    const age = (this.visitHistory.length - i) / this.visitHistory.length;
+                    const opacity = Math.max(0.1, 1 - age * 0.8); // Keep some minimum visibility
+                    
+                    // Create gradient stroke
+                    ctx.strokeStyle = this.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
+                    ctx.lineWidth = 3 + opacity * 2; // Thicker for newer segments
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(prevPoint[0], prevPoint[1]);
+                    ctx.lineTo(currPoint[0], currPoint[1]);
+                    ctx.stroke();
                 }
-                ctx.stroke();
+                
+                // Draw key waypoints (visited locations) as small circles
+                const visitedPoints = [];
+                for (let i = 0; i < this.visitHistory.length; i += 20) { // Sample every 20th point
+                    visitedPoints.push(this.visitHistory[i]);
+                }
+                
+                ctx.fillStyle = this.color + '80'; // Semi-transparent
+                for (let point of visitedPoints) {
+                    ctx.beginPath();
+                    ctx.arc(point[0], point[1], 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
         }
         
