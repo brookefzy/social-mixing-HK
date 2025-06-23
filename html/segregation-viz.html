@@ -145,7 +145,8 @@
             <p>Watch how different income groups experience the city</p>
             <button onclick="startAnimation()">Start Animation</button>
             <button onclick="resetAnimation()">Reset</button>
-            <button onclick="togglePaths()">Toggle Paths</button>
+            <button onclick="clearPaths()">Clear Paths</button>
+            <button onclick="toggleBars()">Toggle Bars</button>
         </div>
         
         <div class="legend">
@@ -156,15 +157,15 @@
             </div>
             <div class="income-group" onclick="showOnlyGroup('Group B')" style="cursor: pointer;">
                 <div class="color-dot" style="background: #ffa502;"></div>
-                <span id="groupB-label">Group B (Least Segregated)</span>
+                <span id="groupB-label">Group B (Moderately Segregated)</span>
             </div>
             <div class="income-group" onclick="showOnlyGroup('Group C')" style="cursor: pointer;">
                 <div class="color-dot" style="background: #3742fa;"></div>
-                <span id="groupC-label">Group C</span>
+                <span id="groupC-label">Group C (Least Segregated)</span>
             </div>
             <div class="income-group" onclick="showOnlyGroup('Group D')" style="cursor: pointer;">
                 <div class="color-dot" style="background: #2ed573;"></div>
-                <span id="groupD-label">Group D</span>
+                <span id="groupD-label">Group D (Highly Segregated)</span>
             </div>
             <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
                 Click a group to show only that group<br>
@@ -183,6 +184,7 @@
         // Global variables
         let animationRunning = false;
         let showPaths = true;
+        let showBars = true; // Control for segregation bars
         let startTime = 0;
         let people = [];
         let visibleGroups = new Set(['Group A', 'Group B', 'Group C', 'Group D']); // Track which groups are visible
@@ -307,8 +309,7 @@
                     
                     map.on('error', function(e) {
                         console.error('Mapbox error:', e);
-                        // fallback to gradient by hiding #map
-                        document.getElementById('map').style.display = 'none';
+                        mapDiv.remove(); // Remove the test div
                         draw();
                     });
                     
@@ -466,6 +467,11 @@
                 
                 ctx.shadowBlur = 0; // Reset shadow
                 
+                // Draw dynamic segregation bar above the person if enabled
+                if (showBars) {
+                    this.drawSegregationBar(ctx, x, y - 25, segregation);
+                }
+                
                 // Draw interaction lines
                 ctx.strokeStyle = 'rgba(246, 38, 129, 0.5)';
                 ctx.lineWidth = 3;
@@ -481,6 +487,42 @@
                         ctx.stroke();
                     }
                 }
+            }
+            
+            drawSegregationBar(ctx, x, y, segregationLevel) {
+                const barWidth = 40;
+                const barHeight = 6;
+                const segregationPercent = Math.round(segregationLevel * 100);
+                
+                // Background bar
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(x - barWidth/2, y, barWidth, barHeight);
+                
+                // Segregation fill
+                const fillWidth = (segregationLevel * barWidth);
+                const barColor = segregationLevel > 0.7 ? '#ff4757' : 
+                                segregationLevel > 0.4 ? '#ffa502' : '#2ed573';
+                
+                ctx.fillStyle = barColor;
+                ctx.fillRect(x - barWidth/2, y, fillWidth, barHeight);
+                
+                // Border
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x - barWidth/2, y, barWidth, barHeight);
+                
+                // Percentage text
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.lineWidth = 2;
+                
+                // Stroke then fill for better readability
+                ctx.strokeText(`${segregationPercent}%`, x, y - 3);
+                ctx.fillText(`${segregationPercent}%`, x, y - 3);
+                
+                ctx.textAlign = 'start'; // Reset
             }
             
             drawVisitHistory(ctx) {
@@ -528,7 +570,7 @@
         function initializePeople() {
             // Create people with realistic Hong Kong segregation patterns
             people = [
-                // Group A - 85% segregated (5 locations in same district)
+                // Group A - MOST SEGREGATED (85% - limited locations in same district)
                 new Person('Group A', 
                     locations.tsuenWanHome,
                     [
@@ -538,38 +580,39 @@
                         locations.communityCenter,
                         locations.dimSumRestaurant,
                         locations.tsuenWanHome
-                    ], colors.low, 0.85),
+                    ], colors.low, 0.85), // Red color, highest segregation
                 
-                // Group B - LEAST SEGREGATED (10 diverse locations across districts)
+                // Group B - MODERATELY SEGREGATED (50% - mid-level mobility)
                 new Person('Group B',
                     locations.kwunTongHome,
                     [
                         locations.mtrStation,
-                        locations.office,
                         locations.chaChaan,
-                        locations.shoppingMall,
-                        locations.bank,
                         locations.yumCha,
                         locations.kTownBar,
                         locations.sportsFacility,
-                        locations.nightMarket,
-                        locations.cafe,
-                        locations.temple,
                         locations.kwunTongHome
-                    ], colors.midLow, 0.2),
+                    ], colors.midLow, 0.5), // Orange color, moderate segregation
                 
-                // Group C - MORE SEGREGATED than Group B (4 upscale locations)
+                // Group C - LEAST SEGREGATED (20% - most diverse locations across districts)
                 new Person('Group C',
                     locations.midLevelsHome,
                     [
+                        locations.office,
                         locations.ifc,
+                        locations.shoppingMall,
+                        locations.bank,
                         locations.soho,
                         locations.privateClub,
                         locations.fitnessClub,
+                        locations.cafe,
+                        locations.temple,
+                        locations.nightMarket,
+                        locations.artGallery,
                         locations.midLevelsHome
-                    ], colors.midHigh, 0.6),
+                    ], colors.midHigh, 0.2), // Blue color, least segregated
                 
-                // Group D - HIGHLY SEGREGATED (5 exclusive locations)
+                // Group D - HIGHLY SEGREGATED (75% - exclusive locations)
                 new Person('Group D',
                     locations.peakHome,
                     [
@@ -579,12 +622,18 @@
                         locations.yacht,
                         locations.artGallery,
                         locations.peakHome
-                    ], colors.high, 0.75)
+                    ], colors.high, 0.75) // Green color, high segregation
             ];
             
             // Initialize starting positions using coordinate conversion
             for (let person of people) {
                 person.currentPosition = lngLatToCanvas(person.home);
+            }
+            
+            // Debug: Log the group assignments
+            console.log('Updated group assignments:');
+            for (let person of people) {
+                console.log(`${person.incomeGroup}: ${person.color}, target segregation: ${(person.segregationTarget * 100)}%`);
             }
         }
         
@@ -616,6 +665,20 @@
         
         function togglePaths() {
             showPaths = !showPaths;
+        }
+        
+        function toggleBars() {
+            showBars = !showBars;
+        }
+        
+        function clearPaths() {
+            // Clear all path histories
+            for (let person of people) {
+                person.visitHistory = [];
+            }
+            // Force a full redraw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            draw();
         }
         
         function updateStats() {
