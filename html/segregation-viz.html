@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Social Segregation in Hong Kong</title>
-    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.css" 
-    rel="stylesheet" /> -->
     <link
   href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css"
   rel="stylesheet"
@@ -179,9 +177,8 @@
             <div id="statsContent">Click Start to begin simulation</div>
         </div>
     </div>
-    
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.min.js"></script> -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js" defer></script>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <script>
         // Global variables
         let animationRunning = false;
@@ -206,7 +203,7 @@
             high: '#2ed573'      // Green
         };
         
-        // Hong Kong locations (normalized coordinates covering the territory)
+        // Hong Kong locations (real latitude and longitude coordinates)
         const locations = {
             // Residential areas
             tsuenWanHome: [114.1095, 22.3707],     // Tsuen Wan
@@ -255,18 +252,27 @@
                 return [point.x, point.y];
             } else {
                 // Fallback: manual projection for Hong Kong bounds
-                // Hong Kong bounds: lng 113.8-114.5, lat 22.1-22.6
+                // Tighter Hong Kong bounds for better fit
                 const lng = lngLat[0];
                 const lat = lngLat[1];
                 
-                const x = ((lng - 113.8) / (114.5 - 113.8)) * canvas.width;
-                const y = ((22.6 - lat) / (22.6 - 22.1)) * canvas.height;
+                // Hong Kong specific bounds
+                const minLng = 114.05;  // Western boundary
+                const maxLng = 114.35;  // Eastern boundary  
+                const minLat = 22.15;   // Southern boundary
+                const maxLat = 22.45;   // Northern boundary
+                
+                // Add padding to keep dots away from edges
+                const padding = 0.1;
+                const effectiveWidth = canvas.width * (1 - 2 * padding);
+                const effectiveHeight = canvas.height * (1 - 2 * padding);
+                
+                const x = ((lng - minLng) / (maxLng - minLng)) * effectiveWidth + (canvas.width * padding);
+                const y = ((maxLat - lat) / (maxLat - minLat)) * effectiveHeight + (canvas.height * padding);
                 
                 return [x, y];
             }
         }
-        
-        // Initialize Mapbox (with better error handling)
         function initializeMapbox() {
             // Skip Mapbox for now - use beautiful fallback background
             //console.log('Using fallback background for better compatibility');
@@ -297,14 +303,14 @@
                         console.log('Mapbox loaded successfully!');
                         mapboxLoaded = true;
                         draw();
-                      });
+                    });
                     
-                      map.on('error', (e) => {
+                    map.on('error', function(e) {
                         console.error('Mapbox error:', e);
                         // fallback to gradient by hiding #map
                         document.getElementById('map').style.display = 'none';
                         draw();
-                      });
+                    });
                     
                 } else {
                     console.log('Mapbox GL JS not loaded');
@@ -363,6 +369,7 @@
                 
                 // Convert to canvas coordinates
                 this.currentPosition = lngLatToCanvas([currentLng, currentLat]);
+                
                 // Record visit history for path visualization
                 this.visitHistory.push([...this.currentPosition]);
                 if (this.visitHistory.length > 300) {
@@ -380,11 +387,11 @@
                 this.interactions = [];
                 for (let other of others) {
                     if (other !== this) {
-                        const dx = (this.currentPosition[0] - other.currentPosition[0]);
-                        const dy = (this.currentPosition[1] - other.currentPosition[1]);
+                        const dx = this.currentPosition[0] - other.currentPosition[0];
+                        const dy = this.currentPosition[1] - other.currentPosition[1];
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        if (distance < 70) { // Interaction threshold
+                        if (distance < 70) { // Interaction threshold in pixels
                             this.interactions.push(other);
                             // Add some randomness to interactions to achieve target segregation
                             if (Math.random() > 0.7) { // Only count 30% of proximity as actual interaction
@@ -558,6 +565,11 @@
                         locations.peakHome
                     ], colors.high, 0.75)
             ];
+            
+            // Initialize starting positions using coordinate conversion
+            for (let person of people) {
+                person.currentPosition = lngLatToCanvas(person.home);
+            }
         }
         
         function startAnimation() {
@@ -677,7 +689,7 @@
             ];
             
             // Draw all location dots first
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             for (let [name, lngLat] of Object.entries(locations)) {
                 const [x, y] = lngLatToCanvas(lngLat);
                 
@@ -695,6 +707,7 @@
             
             for (let [name, lngLat] of labeledLocations) {
                 const [x, y] = lngLatToCanvas(lngLat);
+                
                 // Stroke (outline) first, then fill
                 ctx.strokeText(name, x, y - 15);
                 ctx.fillText(name, x, y - 15);
@@ -749,7 +762,7 @@
             resizeCanvas();
             initializePeople();
             initializeMapbox();
-            updateGroupLabels();
+            updateGroupLabels(); // Initialize label styles
             draw();
             updateStats();
         });
