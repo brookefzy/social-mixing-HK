@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Social Segregation in Hong Kong</title>
+    <title>Social Mixing in Hong Kong</title>
     <link
   href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css"
   rel="stylesheet"
@@ -46,10 +46,10 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(255,255,255, 0.85);
             padding: 20px;
             border-radius: 10px;
-            color: white;
+            color: #024bd4;
             z-index: 100;
             backdrop-filter: blur(10px);
         }
@@ -58,10 +58,10 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(255,255,255, 0.85);
             padding: 20px;
             border-radius: 10px;
-            color: white;
+            color: #024bd4;
             z-index: 100;
             backdrop-filter: blur(10px);
         }
@@ -82,7 +82,7 @@
         button {
             background: linear-gradient(45deg, #ff6b6b, #ee5a52);
             border: none;
-            color: white;
+            color: #fff;
             padding: 10px 20px;
             border-radius: 20px;
             cursor: pointer;
@@ -100,17 +100,17 @@
             position: absolute;
             bottom: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(255,255,255, 0.85);
             padding: 20px;
             border-radius: 10px;
-            color: white;
+            color: #024bd4;
             z-index: 100;
             backdrop-filter: blur(10px);
             font-size: 14px;
             max-width: 320px;
         }
         
-        .segregation-bar {
+        .Mixing-bar {
             width: 100px;
             height: 8px;
             background: rgba(255, 255, 255, 0.2);
@@ -119,7 +119,7 @@
             overflow: hidden;
         }
         
-        .segregation-fill {
+        .Mixing-fill {
             height: 100%;
             border-radius: 4px;
             transition: width 0.3s ease;
@@ -141,7 +141,7 @@
         <canvas id="canvas"></canvas>
         
         <div class="controls">
-            <h3>Social Segregation in Hong Kong</h3>
+            <h3>Social Mixing in Hong Kong</h3>
             <p>Watch how different income groups experience the city</p>
             <button onclick="startAnimation()">Start Animation</button>
             <button onclick="resetAnimation()">Reset</button>
@@ -175,7 +175,7 @@
         </div>
         
         <div class="stats" id="stats">
-            <h4>Segregation Statistics</h4>
+            <h4>Mixing Statistics</h4>
             <div id="statsContent">Click Start to begin simulation</div>
         </div>
     </div>
@@ -185,7 +185,7 @@
         // Global variables
         let animationRunning = false;
         let showPaths = true;
-        let showBars = true; // Control for segregation bars
+        let showBars = true; // Control for Mixing bars
         let startTime = 0;
         let people = [];
         let visibleGroups = new Set(['Group A', 'Group B', 'Group C', 'Group D']); // Track which groups are visible
@@ -331,9 +331,9 @@
             canvas.height = window.innerHeight;
         }
         
-        // Person class with improved segregation calculation
+        // Person class with improved Mixing calculation
         class Person {
-            constructor(incomeGroup, homeLocation, dailyPath, color, segregationTarget = null) {
+            constructor(incomeGroup, homeLocation, dailyPath, color, MixingTarget = null) {
                 this.incomeGroup = incomeGroup;
                 this.home = homeLocation;
                 this.dailyPath = dailyPath;
@@ -343,7 +343,7 @@
                 this.pathHistory = [];
                 this.interactionHistory = {}; // Track interactions by income group
                 this.visitHistory = []; // Full path history for visualization
-                this.segregationTarget = segregationTarget; // Target segregation level
+                this.MixingTarget = MixingTarget; // Target Mixing level
                 
                 // Initialize interaction counts for all groups
                 this.interactionHistory['Group A'] = 0;
@@ -395,7 +395,7 @@
                         
                         if (distance < 70) { // Interaction threshold in pixels
                             this.interactions.push(other);
-                            // Add some randomness to interactions to achieve target segregation
+                            // Add some randomness to interactions to achieve target Mixing
                             if (Math.random() > 0.7) { // Only count 30% of proximity as actual interaction
                                 this.interactionHistory[other.incomeGroup]++;
                             }
@@ -404,12 +404,12 @@
                 }
             }
             
-            // Calculate segregation using evenness index with target adjustment
-            calculateSegregation() {
+            // Calculate Mixing using evenness index with target adjustment
+            calculateMixing() {
                 const totalInteractions = Object.values(this.interactionHistory).reduce((a, b) => a + b, 0);
                 
                 if (totalInteractions === 0) {
-                    return this.segregationTarget || 1.0;
+                    return this.MixingTarget || 1.0;
                 }
                 
                 // Calculate proportions for each group
@@ -422,7 +422,7 @@
                 }
                 
                 if (proportions.length <= 1) {
-                    return this.segregationTarget || 1.0;
+                    return this.MixingTarget || 1.0;
                 }
                 
                 // Calculate evenness using entropy-based measure
@@ -436,15 +436,15 @@
                     }
                 }
                 
-                // Convert entropy to segregation index
-                let segregation = 1 - (entropy / maxEntropy);
+                // Convert entropy to Mixing index
+                let Mixing = (entropy / maxEntropy);
                 
                 // Adjust towards target if specified
-                if (this.segregationTarget !== null && totalInteractions > 10) {
-                    segregation = segregation * 0.7 + this.segregationTarget * 0.3;
+                if (this.MixingTarget !== null && totalInteractions > 10) {
+                    Mixing = Mixing * 0.7 + this.MixingTarget * 0.3;
                 }
                 
-                return Math.max(0, Math.min(1, segregation));
+                return Math.max(0, Math.min(1, Mixing));
             }
             
             draw(ctx) {
@@ -457,9 +457,9 @@
                 const y = this.currentPosition[1];
                 
                 // Draw person with glow effect
-                const segregation = this.calculateSegregation();
+                const Mixing = this.calculateMixing();
                 ctx.shadowColor = this.color;
-                ctx.shadowBlur = 8 + segregation * 8;
+                ctx.shadowBlur = 8 + Mixing * 8;
                 
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
@@ -468,9 +468,9 @@
                 
                 ctx.shadowBlur = 0; // Reset shadow
                 
-                // Draw dynamic segregation bar above the person if enabled
+                // Draw dynamic Mixing bar above the person if enabled
                 if (showBars) {
-                    this.drawSegregationBar(ctx, x, y - 25, segregation);
+                    this.drawMixingBar(ctx, x, y - 25, Mixing);
                 }
                 
                 // Draw interaction lines
@@ -490,19 +490,19 @@
                 }
             }
             
-            drawSegregationBar(ctx, x, y, segregationLevel) {
+            drawMixingBar(ctx, x, y, MixingLevel) {
                 const barWidth = 40;
                 const barHeight = 6;
-                const segregationPercent = Math.round(segregationLevel * 100);
+                const MixingPercent = Math.round(MixingLevel * 100);
                 
                 // Background bar
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                 ctx.fillRect(x - barWidth/2, y, barWidth, barHeight);
                 
-                // Segregation fill
-                const fillWidth = (segregationLevel * barWidth);
-                const barColor = segregationLevel > 0.7 ? '#ff4757' : 
-                                segregationLevel > 0.4 ? '#ffa502' : '#2ed573';
+                // Mixing fill
+                const fillWidth = (MixingLevel * barWidth);
+                const barColor = MixingLevel > 0.7 ? '#2ed573': 
+                                MixingLevel > 0.4 ? '#ffa502' : '#ff4757' ;
                 
                 ctx.fillStyle = barColor;
                 ctx.fillRect(x - barWidth/2, y, fillWidth, barHeight);
@@ -520,8 +520,8 @@
                 ctx.lineWidth = 2;
                 
                 // Stroke then fill for better readability
-                ctx.strokeText(`${segregationPercent}%`, x, y - 3);
-                ctx.fillText(`${segregationPercent}%`, x, y - 3);
+                ctx.strokeText(`${MixingPercent}%`, x, y - 3);
+                ctx.fillText(`${MixingPercent}%`, x, y - 3);
                 
                 ctx.textAlign = 'start'; // Reset
             }
@@ -569,7 +569,7 @@
         }
         
         function initializePeople() {
-            // Create people with realistic Hong Kong segregation patterns
+            // Create people with realistic Hong Kong Mixing patterns
             people = [
                 // Group A - MOST SEGREGATED (85% - limited locations in same district)
                 new Person('Group A', 
@@ -581,7 +581,7 @@
                         locations.communityCenter,
                         locations.dimSumRestaurant,
                         locations.tsuenWanHome
-                    ], colors.low, 0.85), // Red color, highest segregation
+                    ], colors.low, 0.15), // Red color, highest Mixing
                 
                 // Group B - MODERATELY SEGREGATED (50% - mid-level mobility)
                 new Person('Group B',
@@ -593,7 +593,7 @@
                         locations.kTownBar,
                         locations.sportsFacility,
                         locations.kwunTongHome
-                    ], colors.midLow, 0.5), // Orange color, moderate segregation
+                    ], colors.midLow, 0.5), // Orange color, moderate Mixing
                 
                 // Group C - LEAST SEGREGATED (20% - most diverse locations across districts)
                 new Person('Group C',
@@ -611,7 +611,7 @@
                         locations.nightMarket,
                         locations.artGallery,
                         locations.midLevelsHome
-                    ], colors.midHigh, 0.2), // Blue color, least segregated
+                    ], colors.midHigh, 0.8), // Blue color, least segregated
                 
                 // Group D - HIGHLY SEGREGATED (75% - exclusive locations)
                 new Person('Group D',
@@ -623,7 +623,7 @@
                         locations.yacht,
                         locations.artGallery,
                         locations.peakHome
-                    ], colors.high, 0.35) // Green color, high segregation
+                    ], colors.high, 0.65) // Green color, high Mixing
             ];
             
             // Initialize starting positions using coordinate conversion
@@ -634,7 +634,7 @@
             // Debug: Log the group assignments
             console.log('Updated group assignments:');
             for (let person of people) {
-                console.log(`${person.incomeGroup}: ${person.color}, target segregation: ${(person.segregationTarget * 100)}%`);
+                console.log(`${person.incomeGroup}: ${person.color}, target Mixing: ${(person.MixingTarget * 100)}%`);
             }
         }
         
@@ -695,19 +695,18 @@
             
             for (let person of visiblePeople) {
                 const currentInteractions = person.interactions.filter(other => visibleGroups.has(other.incomeGroup)).length;
-                const segregationLevel = person.calculateSegregation();
-                const segregationPercent = Math.round(segregationLevel * 100);
+                const MixingLevel = person.calculateMixing();
+                const MixingPercent = Math.round(MixingLevel * 100);
                 
-                // Color for segregation bar
-                const barColor = segregationLevel > 0.7 ? '#ff4757' : 
-                                segregationLevel > 0.4 ? '#ffa502' : '#2ed573';
+                // Color for Mixing bar
+                const barColor = MixingLevel > 0.7 ? '#2ed573': MixingLevel > 0.4 ? '#ffa502' : '#ff4757';
                 
                 html += `<div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; border-left: 4px solid ${person.color};">
                     <strong>${person.incomeGroup}</strong><br>
                     <small>Current Interactions: ${currentInteractions}</small><br>
-                    <small>Segregation Level: ${segregationPercent}%</small>
-                    <div class="segregation-bar">
-                        <div class="segregation-fill" style="width: ${segregationPercent}%; background: ${barColor};"></div>
+                    <small>Mixing Level: ${MixingPercent}%</small>
+                    <div class="Mixing-bar">
+                        <div class="Mixing-fill" style="width: ${MixingPercent}%; background: ${barColor};"></div>
                     </div>
                 </div>`;
             }
