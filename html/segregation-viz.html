@@ -335,6 +335,8 @@
                       map.on('load', () => {
                         console.log('Mapbox loaded successfully!');
                         mapboxLoaded = true;
+                        // Recalculate positions with Mapbox projection
+                        resetAnimation();
                         draw();
                     });
                     
