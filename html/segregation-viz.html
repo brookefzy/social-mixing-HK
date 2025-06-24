@@ -357,8 +357,10 @@
         
         // Resize canvas
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            // Match the canvas pixel size to its displayed size so
+            // coordinates from map.project align correctly even on mobile
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
         }
         
         // Person class with improved Mixing calculation
