@@ -249,6 +249,7 @@
             publicLibrary: [114.1087, 22.3721],    // Tsuen Wan library
             communityCenter: [114.1102, 22.3698],  // Community center
             mtrStation: [114.1083, 22.3707],       // Tsuen Wan MTR
+            centralMTR: [114.1577, 22.2823],       // Central station meeting point
             dimSumRestaurant: [114.1125, 22.3692], // Local dim sum
             
             // Group B locations (most diverse - across HK)
@@ -606,14 +607,14 @@
             // Create people with realistic Hong Kong Mixing patterns
             people = [
                 // Group A - MOST SEGREGATED (85% - limited locations in same district)
-                new Person('Group A', 
+                new Person('Group A',
                     locations.tsuenWanHome,
                     [
                         locations.wetMarket,
-                        locations.mtrStation,
                         locations.publicLibrary,
+                        locations.centralMTR,
                         locations.communityCenter,
-                        locations.dimSumRestaurant,
+                        locations.mtrStation,
                         locations.tsuenWanHome
                     ], colors.low, 0.15), // Red color, highest Mixing
                 
@@ -621,11 +622,11 @@
                 new Person('Group B',
                     locations.kwunTongHome,
                     [
-                        locations.mtrStation,
                         locations.chaChaan,
+                        locations.centralMTR,
+                        locations.shoppingMall,
                         locations.yumCha,
                         locations.kTownBar,
-                        locations.sportsFacility,
                         locations.kwunTongHome
                     ], colors.midLow, 0.5), // Orange color, moderate Mixing
                 
@@ -633,16 +634,13 @@
                 new Person('Group C',
                     locations.midLevelsHome,
                     [
-                        locations.office,
-                        locations.ifc,
-                        locations.shoppingMall,
-                        locations.bank,
                         locations.soho,
+                        locations.centralMTR,
+                        locations.shoppingMall,
+                        locations.ifc,
+                        locations.office,
                         locations.privateClub,
                         locations.fitnessClub,
-                        locations.cafe,
-                        locations.temple,
-                        locations.nightMarket,
                         locations.artGallery,
                         locations.midLevelsHome
                     ], colors.midHigh, 0.8), // Blue color, least segregated
@@ -652,10 +650,10 @@
                     locations.peakHome,
                     [
                         locations.exclusiveClub,
+                        locations.ifc,
                         locations.michelin,
-                        locations.privateBank,
+                        locations.office,
                         locations.yacht,
-                        locations.artGallery,
                         locations.peakHome
                     ], colors.high, 0.65) // Green color, high Mixing
             ];
@@ -806,13 +804,13 @@
             // Clear, well-spaced location labels
             const labeledLocations = [
                 ['Tsuen Wan', locations.tsuenWanHome],
-                ['Kwun Tong', locations.kwunTongHome], 
+                ['Kwun Tong', locations.kwunTongHome],
                 ['Mid-Levels', locations.midLevelsHome],
                 ['The Peak', locations.peakHome],
-                ['Central/IFC', locations.ifc],
-                ['Wet Market', locations.wetMarket],
-                ['Night Market', locations.nightMarket],
-                ['SoHo', locations.soho]
+                ['Central MTR', locations.centralMTR],
+                ['Shopping Mall', locations.shoppingMall],
+                ['IFC', locations.ifc],
+                ['Office', locations.office]
             ];
             
             // Draw all location dots first
