@@ -133,6 +133,34 @@
             font-size: 11px;
             pointer-events: none;
         }
+
+        @media (max-width: 600px) {
+            .legend {
+                display: none;
+            }
+            .controls {
+                top: 10px;
+                left: 10px;
+                padding: 10px;
+            }
+            .controls h3 {
+                font-size: 16px;
+            }
+            .controls p {
+                font-size: 12px;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            .stats {
+                bottom: 10px;
+                left: 10px;
+                padding: 10px;
+                font-size: 12px;
+                max-width: 90%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -175,8 +203,10 @@
         </div>
         
         <div class="stats" id="stats">
-            <h4>Mixing Statistics</h4>
-            <div id="statsContent">Click Start to begin simulation</div>
+            <details id="statsDetails" open>
+                <summary><strong>Mixing Statistics</strong></summary>
+                <div id="statsContent">Click Start to begin simulation</div>
+            </details>
         </div>
     </div>
 
@@ -757,6 +787,16 @@
                 }
             }
         }
+
+        function updateResponsive() {
+            const details = document.getElementById('statsDetails');
+            if (!details) return;
+            if (window.innerWidth < 600) {
+                details.removeAttribute('open');
+            } else {
+                details.setAttribute('open', '');
+            }
+        }
         
         function drawLocations(ctx) {
             // Clear, well-spaced location labels
@@ -846,6 +886,7 @@
             initializePeople();
             initializeMapbox();
             updateGroupLabels(); // Initialize label styles
+            updateResponsive();
             draw();
             updateStats();
         });
@@ -853,6 +894,7 @@
         window.addEventListener('resize', function() {
             resizeCanvas();
             draw();
+            updateResponsive();
         });
     </script>
 </body>
